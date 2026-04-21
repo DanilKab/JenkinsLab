@@ -1,0 +1,85 @@
+pipeline {
+    agent any
+
+    environment {
+        VENV = "${WORKSPACE}/my_env"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Setup Environment') {
+            steps {
+                sh '''
+                    python3 -m venv ${VENV}
+                    . ${VENV}/bin/activate
+                    pip install --upgrade pip setuptools wheel
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Download Data') {
+            steps {
+                sh '''
+                    . ${VENV}/bin/activate
+                    cd scripts
+                    python download_data.py
+                '''
+            }
+        }
+
+        stage('Preprocess Data') {
+            steps {
+                sh '''
+                    . ${VENV}/bin/activate
+                    cd scripts
+                    python preprocess_data.py
+                '''
+            }
+        }
+
+        stage('Train Model') {
+            steps {
+                sh '''
+                    . ${VENV}/bin/activate
+                    cd scripts
+                    python train_model.py
+                '''
+            }
+        }
+
+        stage('Deploy Model') {
+            steps {
+                sh '''
+                    . ${VENV}/bin/activate
+                    cd scripts
+                    bash deploy_model.sh
+                '''
+            }
+        }
+
+        stage('Test Service') {
+            steps {
+                sh '''
+                    . ${VENV}/bin/activate
+                    cd scripts
+                    sleep 3  # дополнительное ожидание на случай медленного старта
+                    python test_service.py
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            // Очистка фонового процесса mlflow (опционально)
+            sh 'pkill -f "mlflow models serve" || true'
+            cleanWs()
+        }
+    }
+}
