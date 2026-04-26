@@ -65,4 +65,4 @@ if __name__ == "__main__":
         with open("best_model.txt", "w") as f:
             f.write(artifact_uri)
 
-        print(f"{artifact_uri}")
+        print(f"Model saved at: {artifact_uri}")
